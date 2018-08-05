@@ -1,5 +1,6 @@
 var mysql = require("mysql");
 var requirer = require("inquirer");
+var $ = require('jquery');
 //var search = process.argv[2];
 
 var connection = mysql.createConnection({
@@ -46,9 +47,10 @@ var bamCustomer = () => {
                 managerChoices = answers.item
                 if (managerChoices == "View Products for Sale") {
                     showInventory()
+                    connection.end();
                 }
                 else if (managerChoices == "View Low Inventory") {
-                    showInventory()
+                    lowInventory()
                 }
                 else if (managerChoices == "Change Inventory") {
                     showInventory()
@@ -58,8 +60,12 @@ var bamCustomer = () => {
 
                 //lowInventory()
                 //showInventory()
+
             }).then(answers => {
-                setTimeout(function () { addInventory() }, 2000);
+
+                if (managerChoices == "Change Inventory") {
+                    setTimeout(function () { addInventory() }, 1000);
+                }
 
             })
     }
@@ -83,7 +89,7 @@ var bamCustomer = () => {
 
             }
         });
-
+        connection.end();
     }
     function addInventory() {
 
@@ -95,48 +101,112 @@ var bamCustomer = () => {
                 choices: ["Change Inventory", new requirer.Separator(), "New Product"]
             },
 
-            {
-                type: "input",
-                message: "Choose the product to add inventory to?",
-                name: "product"
-            },
+            // {
+            //     type: "input",
+            //     message: "Choose the product to add inventory to?",
+            //     name: "product"
+            // },
+            // {
+            //     type: "input",
+            //     message: "Please type the amount you would like to add.",
+            //     name: "productAmount"
+            // }
 
 
 
         ])
             .then(Invanswers => {
-                myChoice = Invanswers.change_choice;
-                prodToChange = Invanswers.product;
-                if (myChoice == "Change Inventory") {
+                //console.log(Invanswers.change_choice)
+                if (Invanswers.change_choice == "Change Inventory") {
+
+                    requirer.prompt([
+                        {
+                            type: "input",
+                            message: "Choose the product to add inventory to?",
+                            name: "product"
+                        },
+                        {
+                            type: "input",
+                            message: "Please type the amount you would like to add.",
+                            name: "productAmount"
+                        }
+                    ]).then(Invanswers => {
+                        myChoice = Invanswers.change_choice;
+                        prodToChange = Invanswers.product;
+                        productAmount = Invanswers.productAmount;
+                        //console.log(myChoice)
+
+                        connection.query("SELECT stock_quantity FROM products WHERE item_id = ?", [prodToChange], function (err, res) {
+                            if (err) throw err;
+
+                            var currentStock = res[0].stock_quantity;
+                            let updatedQty = Number(currentStock) + Number(productAmount);
+                            connection.query("UPDATE products SET stock_quantity = ? WHERE item_id = ?", [updatedQty, prodToChange], function (err, res) {
+                                if (err) throw err;
+                                for (i = 0; i < res.length; i++) {
+                                    console.log(zeroAppend(res[i].item_id, 15) + " | " + zeroAppend(res[i].product_name, 15) + " | " + zeroAppend(res[i].department_name, 15) + " | " + zeroAppend(res[i].price, 15) + " | " + zeroAppend(res[i].stock_quantity, 15));
+
+                                }
+                            });
+                            connection.end();
+                        });
+
+                    })
+                }
+                else {
+                    requirer.prompt([
+
+                        {
+                            type: "input",
+                            message: "Create an id.",
+                            name: "id",
+                            validate: function validateLastName(name) {
+                                return name !== '';
+                            }
+                        },
+                        {
+                            type: "input",
+                            message: "Type product name.",
+                            name: "productName"
+                        },
+                        {
+                            type: "input",
+                            message: "Enter Department Name.",
+                            name: "deptName"
+                        },
+                        {
+                            type: "input",
+                            message: "Enter the item price.",
+                            name: "itemPrice"
+                        },
+                        {
+                            type: "input",
+                            message: "Enter stock quantity.",
+                            name: "quantity"
+                        },
+
+
+
+
+                    ])
+                        .then(addProdanswers => {
+
+                            connection.query(" INSERT INTO products (item_id,product_name, department_name, price, stock_quantity) VALUES (?,?,?,?,?)", [addProdanswers.id, addProdanswers.productName, addProdanswers.deptName, addProdanswers.itemPrice, addProdanswers.quantity], function (err, res) {
+                                if (err) throw err;
+                                console.log(addProdanswers.id + "  " + addProdanswers.productName + "  " + addProdanswers.deptName + "  " + addProdanswers.itemPrice + "  " + addProdanswers.quantity)
+                                connection.end();
+                            });
+
+                        })
 
                 }
-                //showInventory()
-                //console.log(Invanswers)
-                //managerChoices = answers.item
 
-                // connection.query("SELECT * FROM products WHERE stock_quantity <=3 ORDER BY stock_quantity", function (err, res) {
-                //     if (err) throw err;
-                //     for (i = 0; i < res.length; i++) {
-                //         console.log(zeroAppend(res[i].item_id, 15) + " | " + zeroAppend(res[i].product_name, 15) + " | " + zeroAppend(res[i].department_name, 15) + " | " + zeroAppend(res[i].price, 15) + " | " + zeroAppend(res[i].stock_quantity, 15));
-
-                //     }
-                // });
 
             })
 
 
     }
-    function newProducts() {
 
-        connection.query("SELECT * FROM products WHERE stock_quantity <=3 ORDER BY stock_quantity", function (err, res) {
-            if (err) throw err;
-            for (i = 0; i < res.length; i++) {
-                console.log(zeroAppend(res[i].item_id, 15) + " | " + zeroAppend(res[i].product_name, 15) + " | " + zeroAppend(res[i].department_name, 15) + " | " + zeroAppend(res[i].price, 15) + " | " + zeroAppend(res[i].stock_quantity, 15));
-
-            }
-        });
-
-    }
     function zeroAppend(string, i) {
 
         string = String(string)// Convert input into a string

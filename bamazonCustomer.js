@@ -68,7 +68,7 @@ var bamCustomer = () => {
                     console.log("stock quantity was updated to " + (Number(qty) - Number(requested_units)) + "\n" +
                         "The total cost of your purchase is " + (Number(requested_units) * Number(price))
                     )
-
+                    connection.end();
                 }
                 function insufficientQuantity() {
 
